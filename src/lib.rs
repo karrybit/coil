@@ -19,9 +19,13 @@ pub fn start() -> Result<(), JsValue> {
         &context,
         WebGlRenderingContext::VERTEX_SHADER,
         r#"
-        attribute vec4 position;
+        attribute vec2 position;
+        uniform vec2 resolution;
         void main() {
-            gl_Position = position;
+            vec2 zeroToOne = position / resolution;
+            vec2 zeroToTwo = zeroToOne * 2.0;
+            vec2 clipSpace = zeroToTwo - 1.0;
+            gl_Position = vec4(clipSpace, 0, 1);
         }
     "#,
     )?;
@@ -41,11 +45,14 @@ pub fn start() -> Result<(), JsValue> {
     let program = link_program(&context, &vert_shader, &frag_shader)?;
     // context.use_program(Some(&program));
     let position_attribute_location = context.get_attrib_location(&program, "position");
+    let resolution_uniform_location = context.get_uniform_location(&program, "resolution");
 
     let buffer = context.create_buffer().ok_or("failed to create buffer")?;
     context.bind_buffer(WebGlRenderingContext::ARRAY_BUFFER, Some(&buffer));
 
-    let vertices: [f32; 6] = [0.0, 0.0, 0.0, 0.5, 0.7, 0.0];
+    let vertices: [f32; 12] = [
+        10.0, 20.0, 80.0, 20.0, 10.0, 30.0, 10.0, 30.0, 80.0, 20.0, 80.0, 30.0,
+    ];
     // Note that `Float32Array::view` is somewhat dangerous (hence the
     // `unsafe`!). This is creating a raw view into our module's
     // `WebAssembly.Memory` buffer, but if we allocate more pages for ourself
@@ -91,7 +98,13 @@ pub fn start() -> Result<(), JsValue> {
         offset,
     );
 
-    context.draw_arrays(WebGlRenderingContext::TRIANGLES, 0, 3);
+    context.uniform2f(
+        resolution_uniform_location.as_ref(),
+        canvas.width() as f32,
+        canvas.height() as f32,
+    );
+
+    context.draw_arrays(WebGlRenderingContext::TRIANGLES, 0, 6);
     Ok(())
 }
 
