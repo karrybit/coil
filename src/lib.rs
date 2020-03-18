@@ -1,6 +1,16 @@
+use rand;
+use rand::Rng;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{WebGlProgram, WebGlRenderingContext, WebGlShader};
+
+#[wasm_bindgen]
+extern "C" {
+    // Use `js_namespace` here to bind `console.log(..)` instead of just
+    // `log(..)`
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+}
 
 #[wasm_bindgen(start)]
 pub fn start() -> Result<(), JsValue> {
@@ -8,10 +18,13 @@ pub fn start() -> Result<(), JsValue> {
     let canvas = document.get_element_by_id("canvas").unwrap();
     let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>()?;
 
+    log(format!("canvas: {:#?}", canvas).as_ref());
+
     let context = canvas
         .get_context("webgl")?
         .unwrap()
         .dyn_into::<WebGlRenderingContext>()?;
+    log(format!("context: {:#?}", context).as_ref());
 
     // vertex shaderの初期化
     // vertex shader用のプログラムをコンパイルする
@@ -19,16 +32,25 @@ pub fn start() -> Result<(), JsValue> {
         &context,
         WebGlRenderingContext::VERTEX_SHADER,
         r#"
-        attribute vec2 position;
-        uniform vec2 resolution;
+        attribute vec2 a_position;
+
+        uniform vec2 u_resolution;
+        
         void main() {
-            vec2 zeroToOne = position / resolution;
-            vec2 zeroToTwo = zeroToOne * 2.0;
-            vec2 clipSpace = zeroToTwo - 1.0;
-            gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+           // convert the rectangle from pixels to 0.0 to 1.0
+           vec2 zeroToOne = a_position / u_resolution;
+        
+           // convert from 0->1 to 0->2
+           vec2 zeroToTwo = zeroToOne * 2.0;
+        
+           // convert from 0->2 to -1->+1 (clipspace)
+           vec2 clipSpace = zeroToTwo - 1.0;
+        
+           gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
         }
     "#,
     )?;
+    log(format!("vertex_shader: {:#?}", vert_shader).as_ref());
     // fragment shaderの初期化
     // fragment shader用のプログラムをコンパイルする
     let frag_shader = compile_shader(
@@ -36,44 +58,34 @@ pub fn start() -> Result<(), JsValue> {
         WebGlRenderingContext::FRAGMENT_SHADER,
         r#"
         precision mediump float;
+
+        uniform vec4 u_color;
+        
         void main() {
-            gl_FragColor = vec4(1, 0, 0.5, 1);
+           gl_FragColor = u_color;
         }
     "#,
     )?;
+    log(format!("fragment_shader: {:#?}", frag_shader).as_ref());
     // コンパイルしたshdaerプログラムをリンクする
     let program = link_program(&context, &vert_shader, &frag_shader)?;
+    log(format!("program: {:#?}", program).as_ref());
     // context.use_program(Some(&program));
-    let position_attribute_location = context.get_attrib_location(&program, "position");
-    let resolution_uniform_location = context.get_uniform_location(&program, "resolution");
+    let position_attribute_location = context.get_attrib_location(&program, "a_position");
+    let resolution_uniform_location = context.get_uniform_location(&program, "u_resolution");
+    let color_uniform_location = context.get_uniform_location(&program, "u_color");
 
     let buffer = context.create_buffer().ok_or("failed to create buffer")?;
+    log(format!("buffer: {:#?}", buffer).as_ref());
     context.bind_buffer(WebGlRenderingContext::ARRAY_BUFFER, Some(&buffer));
 
-    let vertices: [f32; 12] = [
-        10.0, 20.0, 80.0, 20.0, 10.0, 30.0, 10.0, 30.0, 80.0, 20.0, 80.0, 30.0,
-    ];
-    // Note that `Float32Array::view` is somewhat dangerous (hence the
-    // `unsafe`!). This is creating a raw view into our module's
-    // `WebAssembly.Memory` buffer, but if we allocate more pages for ourself
-    // (aka do a memory allocation in Rust) it'll cause the buffer to change,
-    // causing the `Float32Array` to be invalid.
-    //
-    // As a result, after `Float32Array::view` we have to be very careful not to
-    // do any memory allocations before it's dropped.
-    unsafe {
-        // vertexの配列
-        let vert_array = js_sys::Float32Array::view(&vertices);
-
-        // GPUにあるbufferにpositionをアップロードする
-        context.buffer_data_with_array_buffer_view(
-            WebGlRenderingContext::ARRAY_BUFFER,
-            &vert_array,
-            WebGlRenderingContext::STATIC_DRAW,
-        );
-    }
-
-    // context.vertex_attrib_pointer_with_i32(0, 3, WebGlRenderingContext::FLOAT, false, 0, 0);
+    log(format!(
+        "width: {:#?}, height: {:#?}",
+        canvas.width(),
+        canvas.height()
+    )
+    .as_ref());
+    context.viewport(0, 0, canvas.width() as i32, canvas.height() as i32);
 
     context.clear_color(0.0, 0.0, 0.0, 0.0);
     context.clear(WebGlRenderingContext::COLOR_BUFFER_BIT);
@@ -102,6 +114,24 @@ pub fn start() -> Result<(), JsValue> {
         resolution_uniform_location.as_ref(),
         canvas.width() as f32,
         canvas.height() as f32,
+    );
+
+    for _ in 0..50 {
+        set_rectangle(
+            &context,
+            random_int(300),
+            random_int(300),
+            random_int(300),
+            random_int(300),
+        );
+    }
+
+    context.uniform4f(
+        color_uniform_location.as_ref(),
+        rand::thread_rng().gen::<f32>(),
+        rand::thread_rng().gen::<f32>(),
+        rand::thread_rng().gen::<f32>(),
+        1.0,
     );
 
     context.draw_arrays(WebGlRenderingContext::TRIANGLES, 0, 6);
@@ -168,5 +198,25 @@ pub fn link_program(
         Err(context
             .get_program_info_log(&program)
             .unwrap_or_else(|| String::from("Unknown error creating program object")))
+    }
+}
+
+fn random_int(i: u32) -> u32 {
+    rand::thread_rng().gen_range(0, i)
+}
+
+fn set_rectangle(context: &WebGlRenderingContext, x: u32, y: u32, width: u32, height: u32) {
+    let x1 = x;
+    let x2 = x + width;
+    let y1 = y;
+    let y2 = y + height;
+    let arr = [x1, y1, x2, y1, x1, y2, x1, y2, x2, y1, x2, y2];
+    unsafe {
+        let vert_array = js_sys::Uint32Array::view(&arr);
+        context.buffer_data_with_array_buffer_view(
+            WebGlRenderingContext::ARRAY_BUFFER,
+            &vert_array,
+            WebGlRenderingContext::STATIC_DRAW,
+        );
     }
 }
