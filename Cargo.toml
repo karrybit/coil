@@ -10,7 +10,10 @@ crate-type = ["cdylib"]
 [dependencies]
 js-sys = "0.3.35"
 wasm-bindgen = "0.2.58"
-rand = { version = "", features = ["wasm-bindgen"] }
+wasm-bindgen-futures = ""
+reqwest = ""
+# reqwest = { version = "", features = ["blocking"] }
+image = ""
 
 [dependencies.web-sys]
 version = "0.3.4"
@@ -23,5 +26,8 @@ features = [
   'WebGlProgram',
   'WebGlShader',
   'WebGlUniformLocation',
+  'WebGlTexture',
   'Window',
+  'ImageData',
+  'ImageBitmap',
 ]
