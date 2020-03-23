@@ -4,16 +4,17 @@ pub fn setup(
     context: &WebGlRenderingContext,
     program: &WebGlProgram,
     attribute: &str,
-    offset: f32,
+    start_point: (f32, f32),
+    width: f32,
+    height: f32,
 ) {
     let position_buffer = context.create_buffer().unwrap();
     // .ok_or("failed to create position buffer")?;
     context.bind_buffer(WebGlRenderingContext::ARRAY_BUFFER, Some(&position_buffer));
 
-    let x1 = 0.0;
-    let x2 = 0.0 + offset;
-    let y1 = 0.0;
-    let y2 = 0.0 + offset;
+    let (x1, y1) = start_point;
+    let x2 = x1 + width;
+    let y2 = y1 + height;
     unsafe {
         let arr = [x1, y1, x2, y1, x1, y2, x1, y2, x2, y1, x2, y2];
         let vert_array = js_sys::Float32Array::view(&arr);

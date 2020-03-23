@@ -1,4 +1,4 @@
-use image;
+use image::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::WebGlRenderingContext;
@@ -23,6 +23,15 @@ pub async fn start() -> Result<(), JsValue> {
     let canvas = document.get_element_by_id("canvas").unwrap();
     let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>()?;
 
+    let bytes = js_image.unwrap().bytes().await.unwrap();
+    let bytes = bytes.iter().map(|&b| b as u8).collect::<Vec<u8>>();
+    let img = image::load_from_memory(&bytes);
+    let img = img.unwrap();
+    let (width, height) = img.dimensions();
+
+    canvas.set_width(width * 2);
+    canvas.set_height(height);
+
     let context = canvas
         .get_context("webgl")?
         .unwrap()
@@ -37,10 +46,6 @@ pub async fn start() -> Result<(), JsValue> {
     // コンパイルしたshdaerプログラムをリンクする
     let program = processor::link_program(&context, &vert_shader, &frag_shader)?;
     context.use_program(Some(&program));
-
-    // attributeの設定
-    attribute::setup(&context, &program, "a_position", 180.0);
-    attribute::setup(&context, &program, "a_texCoord", 1.0);
 
     // テクスチャの作成とbind
     let texture = context.create_texture();
@@ -69,10 +74,7 @@ pub async fn start() -> Result<(), JsValue> {
         WebGlRenderingContext::NEAREST as i32,
     );
 
-    let bytes = wasm_image.unwrap().bytes().await.unwrap();
-    let bytes = bytes.iter().map(|&b| b as u8).collect::<Vec<u8>>();
-    let img = image::load_from_memory(&bytes);
-    let img = img.unwrap().to_rgba();
+    let img = img.to_rgba();
     let pixels = img.pixels();
     let rgba = pixels
         .map(|ref rgba| rgba.0.iter())
@@ -92,8 +94,8 @@ pub async fn start() -> Result<(), JsValue> {
                 WebGlRenderingContext::TEXTURE_2D,
                 0,
                 WebGlRenderingContext::RGBA as i32,
-                180,
-                180,
+                width as i32,
+                height as i32,
                 0,
                 WebGlRenderingContext::RGBA,
                 WebGlRenderingContext::UNSIGNED_BYTE,
@@ -101,13 +103,21 @@ pub async fn start() -> Result<(), JsValue> {
             );
     }
 
-    canvas.set_width(360);
-    canvas.set_height(360);
-
-    context.viewport(0, 0, canvas.width() as i32, canvas.height() as i32);
-
     context.clear_color(0.0, 0.0, 0.0, 0.0);
     context.clear(WebGlRenderingContext::COLOR_BUFFER_BIT);
+
+    // attributeの設定
+    attribute::setup(
+        &context,
+        &program,
+        "a_position",
+        (0.0, 0.0),
+        width as f32,
+        height as f32,
+    );
+    attribute::setup(&context, &program, "a_texCoord", (0.0, 0.0), 1.0, 1.0);
+
+    context.viewport(0, 0, canvas.width() as i32, canvas.height() as i32);
 
     let resolution_location = context.get_uniform_location(&program, "u_resolution");
     context.uniform2f(
@@ -116,5 +126,27 @@ pub async fn start() -> Result<(), JsValue> {
         canvas.height() as f32,
     );
     context.draw_arrays(WebGlRenderingContext::TRIANGLE_STRIP, 0, 6);
+
+    // attributeの設定
+    attribute::setup(
+        &context,
+        &program,
+        "a_position",
+        (width as f32, 0.0),
+        width as f32,
+        height as f32,
+    );
+    attribute::setup(&context, &program, "a_texCoord", (0.0, 0.0), 1.0, 1.0);
+
+    context.viewport(0, 0, canvas.width() as i32, canvas.height() as i32);
+
+    let resolution_location = context.get_uniform_location(&program, "u_resolution");
+    context.uniform2f(
+        resolution_location.as_ref(),
+        canvas.width() as f32,
+        canvas.height() as f32,
+    );
+    context.draw_arrays(WebGlRenderingContext::TRIANGLE_STRIP, 0, 6);
+
     Ok(())
 }
