@@ -2,7 +2,9 @@ use image;
 use reqwest;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::{WebGlProgram, WebGlRenderingContext, WebGlShader};
+use web_sys::WebGlRenderingContext;
+
+mod processor;
 
 #[wasm_bindgen]
 extern "C" {
@@ -10,15 +12,17 @@ extern "C" {
     fn log(s: &str);
 }
 
-async fn fetch_image() -> std::result::Result<reqwest::Response, reqwest::Error> {
-    reqwest::Client::new()
-        .get("https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/WebAssembly_Logo.svg/180px-WebAssembly_Logo.svg.png")
-        .send().await
+async fn fetch_image(url: &str) -> std::result::Result<reqwest::Response, reqwest::Error> {
+    reqwest::Client::new().get(url).send().await
 }
 
 #[wasm_bindgen(start)]
 pub async fn start() -> Result<(), JsValue> {
-    let res = fetch_image().await;
+    let wasm_image_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/WebAssembly_Logo.svg/180px-WebAssembly_Logo.svg.png";
+    let wasm_image = fetch_image(wasm_image_url).await;
+    let js_image_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Unofficial_JavaScript_logo_2.svg/480px-Unofficial_JavaScript_logo_2.svg.png";
+    let js_image = fetch_image(js_image_url).await;
+
     let document = web_sys::window().unwrap().document().unwrap();
     let canvas = document.get_element_by_id("canvas").unwrap();
     let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>()?;
@@ -30,7 +34,7 @@ pub async fn start() -> Result<(), JsValue> {
 
     // vertex shaderの初期化
     // vertex shader用のプログラムをコンパイルする
-    let vert_shader = compile_shader(
+    let vert_shader = processor::compile_shader(
         &context,
         WebGlRenderingContext::VERTEX_SHADER,
         r#"
@@ -59,7 +63,7 @@ pub async fn start() -> Result<(), JsValue> {
     )?;
     // fragment shaderの初期化
     // fragment shader用のプログラムをコンパイルする
-    let frag_shader = compile_shader(
+    let frag_shader = processor::compile_shader(
         &context,
         WebGlRenderingContext::FRAGMENT_SHADER,
         r#"
@@ -77,7 +81,7 @@ pub async fn start() -> Result<(), JsValue> {
     "#,
     )?;
     // コンパイルしたshdaerプログラムをリンクする
-    let program = link_program(&context, &vert_shader, &frag_shader)?;
+    let program = processor::link_program(&context, &vert_shader, &frag_shader)?;
     let position_attribute_location = context.get_attrib_location(&program, "a_position");
     let tex_coord_location = context.get_attrib_location(&program, "a_texCoord");
 
@@ -86,14 +90,12 @@ pub async fn start() -> Result<(), JsValue> {
         .ok_or("failed to create position buffer")?;
     context.bind_buffer(WebGlRenderingContext::ARRAY_BUFFER, Some(&position_buffer));
 
-    set_rectangle(&context, 0.0, 0.0, 180.0, 180.0);
-
-    let tex_coord_buffer = context
-        .create_buffer()
-        .ok_or("failed to create tex coord buffer")?;
-    context.bind_buffer(WebGlRenderingContext::ARRAY_BUFFER, Some(&tex_coord_buffer));
+    let x1 = 0.0;
+    let x2 = 0.0 + 180.0;
+    let y1 = 0.0;
+    let y2 = 0.0 + 180.0;
     unsafe {
-        let arr = [0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0];
+        let arr = [x1, y1, x2, y1, x1, y2, x1, y2, x2, y1, x2, y2];
         let vert_array = js_sys::Float32Array::view(&arr);
         context.buffer_data_with_array_buffer_view(
             WebGlRenderingContext::ARRAY_BUFFER,
@@ -102,10 +104,31 @@ pub async fn start() -> Result<(), JsValue> {
         );
     }
 
+    let tex_coord_buffer = context
+        .create_buffer()
+        .ok_or("failed to create tex coord buffer")?;
+    context.bind_buffer(WebGlRenderingContext::ARRAY_BUFFER, Some(&tex_coord_buffer));
+
+    let x1 = 0.0;
+    let x2 = 0.0 + 1.0;
+    let y1 = 0.0;
+    let y2 = 0.0 + 1.0;
+    unsafe {
+        let arr = [x1, y1, x2, y1, x1, y2, x1, y2, x2, y1, x2, y2];
+        let vert_array = js_sys::Float32Array::view(&arr);
+        context.buffer_data_with_array_buffer_view(
+            WebGlRenderingContext::ARRAY_BUFFER,
+            &vert_array,
+            WebGlRenderingContext::STATIC_DRAW,
+        );
+    }
+
+    // テクスチャの作成とbind
     let texture = context.create_texture();
     // context.active_texture(WebGlRenderingContext::TEXTURE0);
     context.bind_texture(WebGlRenderingContext::TEXTURE_2D, texture.as_ref());
 
+    // textureの設定（どんな画像サイズでも表示できるように）
     context.tex_parameteri(
         WebGlRenderingContext::TEXTURE_2D,
         WebGlRenderingContext::TEXTURE_WRAP_S,
@@ -127,7 +150,7 @@ pub async fn start() -> Result<(), JsValue> {
         WebGlRenderingContext::NEAREST as i32,
     );
 
-    let bytes = res.unwrap().bytes().await.unwrap();
+    let bytes = wasm_image.unwrap().bytes().await.unwrap();
     log(format!("{}", bytes.len()).as_ref());
     log(format!("{:?}", bytes).as_ref());
     let b = bytes.iter().map(|&b| b as u8).collect::<Vec<u8>>();
@@ -141,8 +164,10 @@ pub async fn start() -> Result<(), JsValue> {
         .collect::<Vec<&u8>>();
     let rgba = rgba.clone().into_iter().copied().collect::<Vec<u8>>();
 
+    // 読み込みビット？バイト？の単位を1にする（デフォルトは4）
     context.pixel_storei(WebGlRenderingContext::UNPACK_ALIGNMENT, 1);
 
+    // 画像データを流しこむ
     unsafe {
         // let vert_array = js_sys::Uint8Array::view(&b);
         let vert_array = js_sys::Uint8Array::view(&rgba);
@@ -160,10 +185,8 @@ pub async fn start() -> Result<(), JsValue> {
             );
     }
 
-    let resolution_location = context.get_uniform_location(&program, "u_resolution");
-
-    canvas.set_width(180);
-    canvas.set_height(180);
+    canvas.set_width(360);
+    canvas.set_height(360);
 
     context.viewport(0, 0, canvas.width() as i32, canvas.height() as i32);
 
@@ -180,6 +203,8 @@ pub async fn start() -> Result<(), JsValue> {
     let normalize = false; // don't normalize the data
     let stride = 0; // 0 = move forward size * sizeof(type) each iteration to get the next position
     let offset = 0.0; // start at the beginning of the buffer
+
+    // ARRAY_BUFFERに結合されたバッファーを、現在の頂点バッファーオブジェクトの一般的な頂点属性に結合して、そのレイアウトを指定する
     context.vertex_attrib_pointer_with_f64(
         position_attribute_location as u32,
         size,
@@ -197,6 +222,8 @@ pub async fn start() -> Result<(), JsValue> {
     let normalize = false; // don't normalize the data
     let stride = 0; // 0 = move forward size * sizeof(type) each iteration to get the next position
     let offset = 0.0; // start at the beginning of the buffer
+
+    // ARRAY_BUFFERに結合されたバッファーを、現在の頂点バッファーオブジェクトの一般的な頂点属性に結合して、そのレイアウトを指定する
     context.vertex_attrib_pointer_with_f64(
         tex_coord_location as u32,
         size,
@@ -206,90 +233,12 @@ pub async fn start() -> Result<(), JsValue> {
         offset,
     );
 
+    let resolution_location = context.get_uniform_location(&program, "u_resolution");
     context.uniform2f(
         resolution_location.as_ref(),
         canvas.width() as f32,
         canvas.height() as f32,
     );
-    context.draw_arrays(WebGlRenderingContext::TRIANGLES, 0, 6);
+    context.draw_arrays(WebGlRenderingContext::TRIANGLE_STRIP, 0, 6);
     Ok(())
-}
-
-// shaderのコンパイル
-pub fn compile_shader(
-    context: &WebGlRenderingContext,
-    shader_type: u32,
-    source: &str,
-) -> Result<WebGlShader, String> {
-    // shaderを作成
-    let shader = context
-        .create_shader(shader_type)
-        .ok_or_else(|| String::from("Unable to create shader object"))?;
-    // GLSLのコードをGPUにアップロード
-    context.shader_source(&shader, source);
-    // shaderをコンパイル
-    context.compile_shader(&shader);
-
-    // 成功判定
-    if context
-        .get_shader_parameter(&shader, WebGlRenderingContext::COMPILE_STATUS)
-        .as_bool()
-        .unwrap_or(false)
-    {
-        Ok(shader)
-    } else {
-        // エラーハンドリング
-        Err(context
-            .get_shader_info_log(&shader)
-            .unwrap_or_else(|| String::from("Unknown error creating shader")))
-    }
-}
-
-// コンパイルしたshaderプログラムのリンク
-pub fn link_program(
-    context: &WebGlRenderingContext,
-    vert_shader: &WebGlShader,
-    frag_shader: &WebGlShader,
-) -> Result<WebGlProgram, String> {
-    // プログラムを作成
-    let program = context
-        .create_program()
-        .ok_or_else(|| String::from("Unable to create shader object"))?;
-
-    // プログラムにvertex shaderを付ける
-    context.attach_shader(&program, vert_shader);
-    // プログラムにfragment shaderを付ける
-    context.attach_shader(&program, frag_shader);
-    // プログラムをリンクする
-    context.link_program(&program);
-
-    // 成功判定
-    if context
-        .get_program_parameter(&program, WebGlRenderingContext::LINK_STATUS)
-        .as_bool()
-        .unwrap_or(false)
-    {
-        Ok(program)
-    } else {
-        // エラーハンドリング
-        Err(context
-            .get_program_info_log(&program)
-            .unwrap_or_else(|| String::from("Unknown error creating program object")))
-    }
-}
-
-fn set_rectangle(context: &WebGlRenderingContext, x: f32, y: f32, width: f32, height: f32) {
-    let x1 = x;
-    let x2 = x + width;
-    let y1 = y;
-    let y2 = y + height;
-    unsafe {
-        let arr = [x1, y1, x2, y1, x1, y2, x1, y2, x2, y1, x2, y2];
-        let vert_array = js_sys::Float32Array::view(&arr);
-        context.buffer_data_with_array_buffer_view(
-            WebGlRenderingContext::ARRAY_BUFFER,
-            &vert_array,
-            WebGlRenderingContext::STATIC_DRAW,
-        );
-    }
 }
