@@ -8,15 +8,13 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-js-sys = "0.3.35"
-wasm-bindgen = "0.2.58"
+js-sys = ""
+wasm-bindgen = ""
 wasm-bindgen-futures = ""
 reqwest = ""
-# reqwest = { version = "", features = ["blocking"] }
 image = ""
 
 [dependencies.web-sys]
-version = "0.3.4"
 features = [
   'Document',
   'Element',
@@ -30,4 +28,5 @@ features = [
   'Window',
   'ImageData',
   'ImageBitmap',
+  'Node',
 ]
