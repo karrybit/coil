@@ -24,7 +24,7 @@ window.transition = async function transition() {
   await load();
   let before = count % 2 == 0 ? imageBuf1 : imageBuf2;
   let after = count % 2 != 0 ? imageBuf1 : imageBuf2;
-  WASM.transition(before, after, false);
+  WASM.transition(before, after);
   count++;
 };
 
@@ -32,15 +32,16 @@ window.revTransition = async function revTransition() {
   await load();
   let before = count % 2 == 0 ? imageBuf1 : imageBuf2;
   let after = count % 2 != 0 ? imageBuf1 : imageBuf2;
-  WASM.transition(before, after, true);
+  WASM.transition(before, after);
   count++;
 };
 
 window.pager = async function pager() {
   await load();
-  const buf = imageBuf1;
+  let before = count % 2 == 0 ? imageBuf1 : imageBuf2;
+  let after = count % 2 != 0 ? imageBuf1 : imageBuf2;
   const { Pager } = WASM
-  const pager = new Pager(buf, false);
-  console.log(pager);
-  pager.log();
+  new Pager();
+  WASM.transition(before, after);
+  count++;
 }

@@ -1,7 +1,7 @@
-use web_sys::{WebGlProgram, WebGlRenderingContext};
+use web_sys;
 
 pub fn setup(
-    context: &WebGlRenderingContext,
+    context: &web_sys::WebGlRenderingContext,
     start_point: (f32, f32),
     width: f32,
     height: f32,
@@ -9,7 +9,7 @@ pub fn setup(
 ) {
     let position_buffer = context.create_buffer().unwrap();
     // .ok_or("failed to create position buffer")?;
-    context.bind_buffer(WebGlRenderingContext::ARRAY_BUFFER, Some(&position_buffer));
+    context.bind_buffer(web_sys::WebGlRenderingContext::ARRAY_BUFFER, Some(&position_buffer));
 
     let (x1, y1) = start_point;
     let x2 = x1 + width;
@@ -18,9 +18,9 @@ pub fn setup(
         let arr = [x1, y1, x2, y1, x1, y2, x1, y2, x2, y1, x2, y2];
         let vert_array = js_sys::Float32Array::view(&arr);
         context.buffer_data_with_array_buffer_view(
-            WebGlRenderingContext::ARRAY_BUFFER,
+            web_sys::WebGlRenderingContext::ARRAY_BUFFER,
             &vert_array,
-            WebGlRenderingContext::STATIC_DRAW,
+            web_sys::WebGlRenderingContext::STATIC_DRAW,
         );
     }
 
@@ -28,7 +28,7 @@ pub fn setup(
     context.vertex_attrib_pointer_with_f64(
         indx,
         2,
-        WebGlRenderingContext::FLOAT,
+        web_sys::WebGlRenderingContext::FLOAT,
         false,
         0,
         0.0,
