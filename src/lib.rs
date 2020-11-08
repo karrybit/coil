@@ -103,31 +103,35 @@ impl Pager {
     }
 
     #[wasm_bindgen]
-    pub async fn up(speed: u32, before_data: Vec<u8>, after_data: Vec<u8>) -> Result<(), JsValue> {
+    pub async fn up(interval: u32, before_data: Vec<u8>, after_data: Vec<u8>) -> Result<(), JsValue> {
         let before_image = to_rgba(before_data);
         let after_image = to_rgba(after_data);
-        transition(speed, Direction::Up, Pager::inner().canvas.width(), Pager::inner().canvas.height(), before_image, after_image);
+        let inner = Pager::inner();
+        transition(interval, Direction::Up, inner.canvas.width(), inner.canvas.height(), before_image, after_image, inner.position_attribute_location, inner.tex_coord_attribute_location);
         Ok(())
     }
     #[wasm_bindgen]
-    pub async fn right(speed: u32, before_data: Vec<u8>, after_data: Vec<u8>) -> Result<(), JsValue> {
+    pub async fn right(interval: u32, before_data: Vec<u8>, after_data: Vec<u8>) -> Result<(), JsValue> {
         let before_image = to_rgba(before_data);
         let after_image = to_rgba(after_data);
-        transition(speed, Direction::Right, Pager::inner().canvas.width(), Pager::inner().canvas.height(), before_image, after_image);
+        let inner = Pager::inner();
+        transition(interval, Direction::Right, inner.canvas.width(), inner.canvas.height(), before_image, after_image, inner.position_attribute_location, inner.tex_coord_attribute_location);
         Ok(())
     }
     #[wasm_bindgen]
-    pub async fn down(speed: u32, before_data: Vec<u8>, after_data: Vec<u8>) -> Result<(), JsValue> {
+    pub async fn down(interval: u32, before_data: Vec<u8>, after_data: Vec<u8>) -> Result<(), JsValue> {
         let before_image = to_rgba(before_data);
         let after_image = to_rgba(after_data);
-        transition(speed, Direction::Down, Pager::inner().canvas.width(), Pager::inner().canvas.height(), before_image, after_image);
+        let inner = Pager::inner();
+        transition(interval, Direction::Down, inner.canvas.width(), inner.canvas.height(), before_image, after_image, inner.position_attribute_location, inner.tex_coord_attribute_location);
         Ok(())
     }
     #[wasm_bindgen]
-    pub async fn left(speed: u32, before_data: Vec<u8>, after_data: Vec<u8>) -> Result<(), JsValue> {
+    pub async fn left(interval: u32, before_data: Vec<u8>, after_data: Vec<u8>) -> Result<(), JsValue> {
         let before_image = to_rgba(before_data);
         let after_image = to_rgba(after_data);
-        transition(speed, Direction::Left, Pager::inner().canvas.width(), Pager::inner().canvas.height(), before_image, after_image);
+        let inner = Pager::inner();
+        transition(interval, Direction::Left, inner.canvas.width(), inner.canvas.height(), before_image, after_image, inner.position_attribute_location, inner.tex_coord_attribute_location);
         Ok(())
     }
 }
@@ -145,7 +149,7 @@ fn to_rgba(data: Vec<u8>) -> Vec<u8> {
     rgba
 }
 
-fn draw(image: &[u8], x: f32, y: f32) {
+fn draw(image: &[u8], x: f32, y: f32, width: u32, height: u32, position_attribute_location: u32, tex_coord_attribute_location: u32) {
     unsafe {
         let vert_array = js_sys::Uint8Array::view(&image);
         let _ = Pager::inner().context
@@ -153,8 +157,8 @@ fn draw(image: &[u8], x: f32, y: f32) {
                 web_sys::WebGlRenderingContext::TEXTURE_2D,
                 0,
                 web_sys::WebGlRenderingContext::RGBA as i32,
-                Pager::inner().canvas.width() as i32,
-                Pager::inner().canvas.height() as i32,
+                width as i32,
+                height as i32,
                 0,
                 web_sys::WebGlRenderingContext::RGBA,
                 web_sys::WebGlRenderingContext::UNSIGNED_BYTE,
@@ -165,16 +169,16 @@ fn draw(image: &[u8], x: f32, y: f32) {
     attribute::setup(
         &Pager::inner().context,
         (x, y),
-        Pager::inner().canvas.width() as f32,
-        Pager::inner().canvas.height() as f32,
-        Pager::inner().position_attribute_location,
+        width as f32,
+        height as f32,
+        position_attribute_location,
     );
     attribute::setup(
         &Pager::inner().context,
         (0f32, 0f32),
         1f32,
         1f32,
-        Pager::inner().tex_coord_attribute_location,
+        tex_coord_attribute_location,
     );
 
     Pager::inner().context.draw_arrays(web_sys::WebGlRenderingContext::TRIANGLE_STRIP, 0, 6);
@@ -188,56 +192,60 @@ enum Direction {
     Left,
 }
 
-fn calc_before_position(i: u32, width: u32, height: u32, direction: Direction) -> (f32, f32) {
-    match direction {
-        Direction::Up => {
-            (0f32, std::cmp::max(-(i as i32), -(height as i32)) as f32)
+#[derive(Copy, Clone)]
+enum Position {
+    Before,
+    After,
+}
+
+fn calc_position(progress: u32, width: u32, height: u32, direction: Direction, position: Position) -> (f32, f32) {
+    use Direction::*;
+    use Position::*;
+
+    match (direction, position) {
+        (Up, Before) => {
+            (0f32, std::cmp::max(-(progress as i32), -(height as i32)) as f32)
         },
-        Direction::Right => {
-            (std::cmp::min(i, width) as f32, 0f32)
+        (Up, After) => {
+            (0f32, std::cmp::max(0, height-progress) as f32)
         },
-        Direction::Down => {
-            (0f32, std::cmp::min(i, height) as f32)
+        (Right, Before) => {
+            (std::cmp::min(progress, width) as f32, 0f32)
         },
-        Direction::Left => {
-            (std::cmp::max(-(i as i32), -(width as i32)) as f32, 0f32)
+        (Right, After) => {
+            (std::cmp::min(0, -((width-progress) as i32)) as f32, 0f32)
+        },
+        (Down, Before) => {
+            (0f32, std::cmp::min(progress, height) as f32)
+        },
+        (Down, After) => {
+            (0f32, std::cmp::min(0, -((height-progress) as i32)) as f32)
+        },
+        (Left, Before) => {
+            (std::cmp::max(-(progress as i32), -(width as i32)) as f32, 0f32)
+        },
+        (Left, After) => {
+            (std::cmp::max(0, width-progress) as f32, 0f32)
         }
     }
 }
 
-fn calc_after_position(i: u32, width: u32, height: u32, direction: Direction) -> (f32, f32) {
-    match direction {
-        Direction::Up => {
-            (0f32, std::cmp::max(0, height-i) as f32)
-        },
-        Direction::Right => {
-            (std::cmp::min(0, -((width-i) as i32)) as f32, 0f32)
-        },
-        Direction::Down => {
-            (0f32, std::cmp::min(0, -((height-i) as i32)) as f32)
-        },
-        Direction::Left => {
-            (std::cmp::max(0, width-i) as f32, 0f32)
-        }
-    }
-}
-
-fn transition(a: u32, direction: Direction, width: u32, height: u32, before_image: Vec<u8>, after_image: Vec<u8>) {
+fn transition(interval: u32, direction: Direction, width: u32, height: u32, before_image: Vec<u8>, after_image: Vec<u8>, position_attribute_location: u32, tex_coord_attribute_location: u32) {
     let f = std::rc::Rc::new(std::cell::RefCell::new(None));
     let g = f.clone();
 
-    let speed = width / a;
+    let speed = width / interval;
     let mut progress = 0u32;
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
         if progress > width {
             return;
         }
 
-        let (bx, by) = calc_before_position(progress, width, height, direction);
-        draw(&before_image, bx, by);
+        let (bx, by) = calc_position(progress, width, height, direction, Position::Before);
+        draw(&before_image, bx, by, width, height, position_attribute_location, tex_coord_attribute_location);
 
-        let (ax, ay) = calc_after_position(progress, width, height, direction);
-        draw(&after_image, ax, ay);
+        let (ax, ay) = calc_position(progress, width, height, direction, Position::After);
+        draw(&after_image, ax, ay, width, height, position_attribute_location, tex_coord_attribute_location);
 
         let status = get_element_by("speed");
         let before_image = get_element_by("before_image");

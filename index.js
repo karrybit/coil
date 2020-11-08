@@ -20,14 +20,14 @@ const load = async () => {
   }
 }
 
-const SPEED = 100;
+const INTERVAL = 12;
 
 window.up = async function up() {
   await load();
   let before = count % 2 == 0 ? imageBuf1 : imageBuf2;
   let after = count % 2 != 0 ? imageBuf1 : imageBuf2;
   WASM.Pager.initialize();
-  WASM.Pager.up(SPEED, before, after);
+  WASM.Pager.up(INTERVAL, before, after);
   count++;
 };
 
@@ -36,7 +36,7 @@ window.right = async function right() {
   let before = count % 2 == 0 ? imageBuf1 : imageBuf2;
   let after = count % 2 != 0 ? imageBuf1 : imageBuf2;
   WASM.Pager.initialize();
-  WASM.Pager.right(SPEED, before, after);
+  WASM.Pager.right(INTERVAL, before, after);
   count++;
 };
 
@@ -45,7 +45,7 @@ window.down = async function down() {
   let before = count % 2 == 0 ? imageBuf1 : imageBuf2;
   let after = count % 2 != 0 ? imageBuf1 : imageBuf2;
   WASM.Pager.initialize();
-  WASM.Pager.down(SPEED, before, after);
+  WASM.Pager.down(INTERVAL, before, after);
   count++;
 };
 
@@ -54,6 +54,6 @@ window.left = async function left() {
   let before = count % 2 == 0 ? imageBuf1 : imageBuf2;
   let after = count % 2 != 0 ? imageBuf1 : imageBuf2;
   WASM.Pager.initialize();
-  WASM.Pager.left(SPEED, before, after);
+  WASM.Pager.left(INTERVAL, before, after);
   count++;
 };
