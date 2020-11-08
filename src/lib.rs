@@ -148,7 +148,7 @@ pub async fn transition(before_data: Vec<u8>, after_data: Vec<u8>, rev: bool) ->
         } else {
             std::cmp::max(-(i as i32), -(pager.canvas.height() as i32)) as f32
         };
-        let y = 0.0;
+        let y = 0f32;
         unsafe {
             log(format!("i:{}, x:{}, y:{}", i, x, y).as_str());
         }
@@ -162,9 +162,9 @@ pub async fn transition(before_data: Vec<u8>, after_data: Vec<u8>, rev: bool) ->
         );
         attribute::setup(
             &pager.context,
-            (0.0, 0.0),
-            1.0,
-            1.0,
+            (0f32, 0f32),
+            1f32,
+            1f32,
             pager.tex_coord_attribute_location,
         );
 
@@ -190,7 +190,7 @@ pub async fn transition(before_data: Vec<u8>, after_data: Vec<u8>, rev: bool) ->
         } else {
             std::cmp::max(0, pager.canvas.width()-i) as f32
         };
-        let y = 0.0;
+        let y = 0f32;
         unsafe {
             log(format!("i:{}, x:{}, y:{}", i, x, y).as_str());
         }
@@ -205,9 +205,9 @@ pub async fn transition(before_data: Vec<u8>, after_data: Vec<u8>, rev: bool) ->
         );
         attribute::setup(
             &pager.context,
-            (0.0, 0.0),
-            1.0,
-            1.0,
+            (0f32, 0f32),
+            1f32,
+            1f32,
             pager.tex_coord_attribute_location as _
         );
 
