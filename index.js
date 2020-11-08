@@ -20,28 +20,40 @@ const load = async () => {
   }
 }
 
-window.transition = async function transition() {
+const SPEED = 100;
+
+window.up = async function up() {
   await load();
   let before = count % 2 == 0 ? imageBuf1 : imageBuf2;
   let after = count % 2 != 0 ? imageBuf1 : imageBuf2;
-  WASM.transition(before, after);
+  WASM.Pager.initialize();
+  WASM.Pager.up(SPEED, before, after);
   count++;
 };
 
-window.revTransition = async function revTransition() {
+window.right = async function right() {
   await load();
   let before = count % 2 == 0 ? imageBuf1 : imageBuf2;
   let after = count % 2 != 0 ? imageBuf1 : imageBuf2;
-  WASM.transition(before, after);
+  WASM.Pager.initialize();
+  WASM.Pager.right(SPEED, before, after);
   count++;
 };
 
-window.pager = async function pager() {
+window.down = async function down() {
   await load();
   let before = count % 2 == 0 ? imageBuf1 : imageBuf2;
   let after = count % 2 != 0 ? imageBuf1 : imageBuf2;
-  const { Pager } = WASM
-  new Pager();
-  WASM.transition(before, after);
+  WASM.Pager.initialize();
+  WASM.Pager.down(SPEED, before, after);
   count++;
-}
+};
+
+window.left = async function left() {
+  await load();
+  let before = count % 2 == 0 ? imageBuf1 : imageBuf2;
+  let after = count % 2 != 0 ? imageBuf1 : imageBuf2;
+  WASM.Pager.initialize();
+  WASM.Pager.left(SPEED, before, after);
+  count++;
+};

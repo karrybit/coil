@@ -4,7 +4,6 @@ use wasm_bindgen::JsCast;
 use web_sys;
 
 mod attribute;
-mod loader;
 mod processor;
 mod shader;
 
@@ -26,8 +25,12 @@ static mut PAGER: Option<Box<Pager>> = None;
 
 #[wasm_bindgen]
 impl Pager {
-    #[wasm_bindgen(constructor)]
-    pub fn new() -> Result<(), JsValue> {
+    pub fn initialize() -> Result<(), JsValue> {
+        unsafe {
+            if PAGER.is_some() {
+                return Ok(())
+            }
+        }
         let canvas = get_element_by("canvas").dyn_into::<web_sys::HtmlCanvasElement>()?;
 
         let context = canvas
@@ -99,10 +102,33 @@ impl Pager {
         }
     }
 
-    pub fn log(&self) {
-        unsafe {
-            log(";lasdkfj;lsadfjlasd");
-        }
+    #[wasm_bindgen]
+    pub async fn up(speed: u32, before_data: Vec<u8>, after_data: Vec<u8>) -> Result<(), JsValue> {
+        let before_image = to_rgba(before_data);
+        let after_image = to_rgba(after_data);
+        transition(speed, Direction::Up, Pager::inner().canvas.width(), Pager::inner().canvas.height(), before_image, after_image);
+        Ok(())
+    }
+    #[wasm_bindgen]
+    pub async fn right(speed: u32, before_data: Vec<u8>, after_data: Vec<u8>) -> Result<(), JsValue> {
+        let before_image = to_rgba(before_data);
+        let after_image = to_rgba(after_data);
+        transition(speed, Direction::Right, Pager::inner().canvas.width(), Pager::inner().canvas.height(), before_image, after_image);
+        Ok(())
+    }
+    #[wasm_bindgen]
+    pub async fn down(speed: u32, before_data: Vec<u8>, after_data: Vec<u8>) -> Result<(), JsValue> {
+        let before_image = to_rgba(before_data);
+        let after_image = to_rgba(after_data);
+        transition(speed, Direction::Down, Pager::inner().canvas.width(), Pager::inner().canvas.height(), before_image, after_image);
+        Ok(())
+    }
+    #[wasm_bindgen]
+    pub async fn left(speed: u32, before_data: Vec<u8>, after_data: Vec<u8>) -> Result<(), JsValue> {
+        let before_image = to_rgba(before_data);
+        let after_image = to_rgba(after_data);
+        transition(speed, Direction::Left, Pager::inner().canvas.width(), Pager::inner().canvas.height(), before_image, after_image);
+        Ok(())
     }
 }
 
@@ -119,7 +145,7 @@ fn to_rgba(data: Vec<u8>) -> Vec<u8> {
     rgba
 }
 
-fn draw(image: &[u8], x: f32, y: f32 ,i: u32) {
+fn draw(image: &[u8], x: f32, y: f32) {
     unsafe {
         let vert_array = js_sys::Uint8Array::view(&image);
         let _ = Pager::inner().context
@@ -136,10 +162,6 @@ fn draw(image: &[u8], x: f32, y: f32 ,i: u32) {
             );
     }
 
-    unsafe {
-        log(format!("i:{}, x:{}, y:{}", i, x, y).as_str());
-    }
-    // attributeの設定
     attribute::setup(
         &Pager::inner().context,
         (x, y),
@@ -160,7 +182,7 @@ fn draw(image: &[u8], x: f32, y: f32 ,i: u32) {
 
 #[derive(Copy, Clone)]
 enum Direction {
-    Top,
+    Up,
     Right,
     Down,
     Left,
@@ -168,11 +190,15 @@ enum Direction {
 
 fn calc_before_position(i: u32, width: u32, height: u32, direction: Direction) -> (f32, f32) {
     match direction {
-        Direction::Top => (0f32, 0f32),
+        Direction::Up => {
+            (0f32, std::cmp::max(-(i as i32), -(height as i32)) as f32)
+        },
         Direction::Right => {
             (std::cmp::min(i, width) as f32, 0f32)
         },
-        Direction::Down => (0f32, 0f32),
+        Direction::Down => {
+            (0f32, std::cmp::min(i, height) as f32)
+        },
         Direction::Left => {
             (std::cmp::max(-(i as i32), -(width as i32)) as f32, 0f32)
         }
@@ -181,86 +207,50 @@ fn calc_before_position(i: u32, width: u32, height: u32, direction: Direction) -
 
 fn calc_after_position(i: u32, width: u32, height: u32, direction: Direction) -> (f32, f32) {
     match direction {
-        Direction::Top => (0f32, 0f32),
+        Direction::Up => {
+            (0f32, std::cmp::max(0, height-i) as f32)
+        },
         Direction::Right => {
             (std::cmp::min(0, -((width-i) as i32)) as f32, 0f32)
         },
-        Direction::Down => (0f32, 0f32),
+        Direction::Down => {
+            (0f32, std::cmp::min(0, -((height-i) as i32)) as f32)
+        },
         Direction::Left => {
             (std::cmp::max(0, width-i) as f32, 0f32)
         }
     }
 }
 
-fn _transition(direction: Direction, width: u32, height: u32, before_image: Vec<u8>, after_image: Vec<u8>) {
+fn transition(a: u32, direction: Direction, width: u32, height: u32, before_image: Vec<u8>, after_image: Vec<u8>) {
     let f = std::rc::Rc::new(std::cell::RefCell::new(None));
     let g = f.clone();
 
-    let diff = width / 10;
-    let mut i = 0u32;
+    let speed = width / a;
+    let mut progress = 0u32;
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
-        if i > width {
-            let t = get_element_by("t");
-            t.set_text_content(Some("All done!"));
-            let _ = f.borrow_mut().take();
+        if progress > width {
             return;
         }
 
-        let (x, y) = calc_before_position(i, width, height, direction);
-        draw(&before_image, x, y, i);
+        let (bx, by) = calc_before_position(progress, width, height, direction);
+        draw(&before_image, bx, by);
 
-        let (x, y) = calc_after_position(i, width, height, direction);
-        draw(&after_image, x, y, i);
+        let (ax, ay) = calc_after_position(progress, width, height, direction);
+        draw(&after_image, ax, ay);
 
-        i += diff;
+        let status = get_element_by("speed");
+        let before_image = get_element_by("before_image");
+        let after_image = get_element_by("after_image");
+        status.set_text_content(Some(format!("speed: {}, progress: {}", speed, progress).as_str()));
+        before_image.set_text_content(Some(format!("x: {}, y: {}", bx, by).as_str()));
+        after_image.set_text_content(Some(format!("x: {}, y: {}", ax, ay).as_str()));
+
+        progress += speed;
+
         request_animation_frame(f.borrow().as_ref().unwrap());
     }) as Box<dyn FnMut()>));
     request_animation_frame(g.borrow().as_ref().unwrap());
-}
-
-#[wasm_bindgen]
-pub async fn transition(before_data: Vec<u8>, after_data: Vec<u8>) -> Result<(), JsValue> {
-    let before_image = to_rgba(before_data);
-    let after_image = to_rgba(after_data);
-
-    _transition(Direction::Left, Pager::inner().canvas.width(), Pager::inner().canvas.height(), before_image, after_image);
-
-    // let f = std::rc::Rc::new(std::cell::RefCell::new(None));
-    // let g = f.clone();
-
-    // let diff = pager.canvas.width() / 10;
-    // let mut i = 0u32;
-    // *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
-    //     if i > pager.canvas.width() {
-    //         let t = get_element_by("t");
-    //         t.set_text_content(Some("All done!"));
-    //         let _ = f.borrow_mut().take();
-    //         return;
-    //     }
-
-    //     let x = if rev {
-    //         std::cmp::min(i, pager.canvas.width()) as f32
-    //     } else {
-    //         std::cmp::max(-(i as i32), -(pager.canvas.height() as i32)) as f32
-    //     };
-    //     let y = 0f32;
-    //     draw(&pager, &before_rgba, x, y, i);
-
-    //     let x = if rev {
-    //         std::cmp::min(0, -((pager.canvas.width()-i) as i32)) as f32
-    //     } else {
-    //         std::cmp::max(0, pager.canvas.width()-i) as f32
-    //     };
-    //     let y = 0f32;
-    //     draw(&pager, &after_rgba, x, y, i);
-
-    //     i += diff;
-    //     request_animation_frame(f.borrow().as_ref().unwrap());
-    // }) as Box<dyn FnMut()>));
-
-    // request_animation_frame(g.borrow().as_ref().unwrap());
-
-    Ok(())
 }
 
 fn window() -> web_sys::Window {

@@ -8,7 +8,6 @@ pub fn setup(
     indx: u32,
 ) {
     let position_buffer = context.create_buffer().unwrap();
-    // .ok_or("failed to create position buffer")?;
     context.bind_buffer(web_sys::WebGlRenderingContext::ARRAY_BUFFER, Some(&position_buffer));
 
     let (x1, y1) = start_point;
@@ -24,7 +23,6 @@ pub fn setup(
         );
     }
 
-    // ARRAY_BUFFERに結合されたバッファーを、現在の頂点バッファーオブジェクトの一般的な頂点属性に結合して、そのレイアウトを指定する
     context.vertex_attrib_pointer_with_f64(
         indx,
         2,

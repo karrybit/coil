@@ -8,12 +8,19 @@
 <body>
   <canvas id="canvas" height="480" width="480"></canvas>
   <div>
-    <button type="button" onclick="revTransition()">←</button>
-    <button type="button" onclick="transition()">→</button>
-    <button type="button" onclick="pager()">x</button>
+    <button type="button" onclick="up()">↑</button>
+    <button type="button" onclick="right()">→</button>
+    <button type="button" onclick="down()">↓</button>
+    <button type="button" onclick="left()">←</button>
   </div>
   <div>
-    <text id="t">???</text>
+    <text id="speed">speed: , progress:</text>
+  </div>
+  <div>
+    <text id="before_image">x: , y:</text>
+  </div>
+  <div>
+    <text id="after_image">x: , y:</text>
   </div>
 </body>
 
