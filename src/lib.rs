@@ -3,7 +3,6 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys;
 
-mod attribute;
 mod processor;
 mod shader;
 
@@ -149,87 +148,6 @@ fn to_rgba(data: Vec<u8>) -> Vec<u8> {
     rgba
 }
 
-fn draw(image: &[u8], x: f32, y: f32, width: u32, height: u32, position_attribute_location: u32, tex_coord_attribute_location: u32) {
-    unsafe {
-        let vert_array = js_sys::Uint8Array::view(&image);
-        let _ = Pager::inner().context
-            .tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
-                web_sys::WebGlRenderingContext::TEXTURE_2D,
-                0,
-                web_sys::WebGlRenderingContext::RGBA as i32,
-                width as i32,
-                height as i32,
-                0,
-                web_sys::WebGlRenderingContext::RGBA,
-                web_sys::WebGlRenderingContext::UNSIGNED_BYTE,
-                Some(&vert_array),
-            );
-    }
-
-    attribute::setup(
-        &Pager::inner().context,
-        (x, y),
-        width as f32,
-        height as f32,
-        position_attribute_location,
-    );
-    attribute::setup(
-        &Pager::inner().context,
-        (0f32, 0f32),
-        1f32,
-        1f32,
-        tex_coord_attribute_location,
-    );
-
-    Pager::inner().context.draw_arrays(web_sys::WebGlRenderingContext::TRIANGLE_STRIP, 0, 6);
-}
-
-#[derive(Copy, Clone)]
-enum Direction {
-    Up,
-    Right,
-    Down,
-    Left,
-}
-
-#[derive(Copy, Clone)]
-enum Position {
-    Before,
-    After,
-}
-
-fn calc_position(progress: u32, width: u32, height: u32, direction: Direction, position: Position) -> (f32, f32) {
-    use Direction::*;
-    use Position::*;
-
-    match (direction, position) {
-        (Up, Before) => {
-            (0f32, std::cmp::max(-(progress as i32), -(height as i32)) as f32)
-        },
-        (Up, After) => {
-            (0f32, std::cmp::max(0, height-progress) as f32)
-        },
-        (Right, Before) => {
-            (std::cmp::min(progress, width) as f32, 0f32)
-        },
-        (Right, After) => {
-            (std::cmp::min(0, -((width-progress) as i32)) as f32, 0f32)
-        },
-        (Down, Before) => {
-            (0f32, std::cmp::min(progress, height) as f32)
-        },
-        (Down, After) => {
-            (0f32, std::cmp::min(0, -((height-progress) as i32)) as f32)
-        },
-        (Left, Before) => {
-            (std::cmp::max(-(progress as i32), -(width as i32)) as f32, 0f32)
-        },
-        (Left, After) => {
-            (std::cmp::max(0, width-progress) as f32, 0f32)
-        }
-    }
-}
-
 fn transition(interval: u32, direction: Direction, width: u32, height: u32, before_image: Vec<u8>, after_image: Vec<u8>, position_attribute_location: u32, tex_coord_attribute_location: u32) {
     let f = std::rc::Rc::new(std::cell::RefCell::new(None));
     let g = f.clone();
@@ -259,6 +177,104 @@ fn transition(interval: u32, direction: Direction, width: u32, height: u32, befo
         request_animation_frame(f.borrow().as_ref().unwrap());
     }) as Box<dyn FnMut()>));
     request_animation_frame(g.borrow().as_ref().unwrap());
+}
+
+#[derive(Copy, Clone)]
+enum Direction {
+    Up,
+    Right,
+    Down,
+    Left,
+}
+
+#[derive(Copy, Clone)]
+enum Position {
+    Before,
+    After,
+}
+
+fn calc_position(progress: u32, width: u32, height: u32, direction: Direction, position: Position) -> (f32, f32) {
+    use Direction::*;
+    use Position::*;
+
+    match (direction, position) {
+        (Up, Before) => (0f32, std::cmp::max(-(progress as i32), -(height as i32)) as f32),
+        (Up, After) => (0f32, std::cmp::max(0, height-progress) as f32),
+        (Right, Before) => (std::cmp::min(progress, width) as f32, 0f32),
+        (Right, After) => (std::cmp::min(0, -((width-progress) as i32)) as f32, 0f32),
+        (Down, Before) => (0f32, std::cmp::min(progress, height) as f32),
+        (Down, After) => (0f32, std::cmp::min(0, -((height-progress) as i32)) as f32),
+        (Left, Before) => (std::cmp::max(-(progress as i32), -(width as i32)) as f32, 0f32),
+        (Left, After) => (std::cmp::max(0, width-progress) as f32, 0f32),
+    }
+}
+
+fn draw(image: &[u8], x: f32, y: f32, width: u32, height: u32, position_attribute_location: u32, tex_coord_attribute_location: u32) {
+    unsafe {
+        let vert_array = js_sys::Uint8Array::view(&image);
+        let _ = Pager::inner().context
+            .tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
+                web_sys::WebGlRenderingContext::TEXTURE_2D,
+                0,
+                web_sys::WebGlRenderingContext::RGBA as i32,
+                width as i32,
+                height as i32,
+                0,
+                web_sys::WebGlRenderingContext::RGBA,
+                web_sys::WebGlRenderingContext::UNSIGNED_BYTE,
+                Some(&vert_array),
+            );
+    }
+
+    setup_buffer(
+        &Pager::inner().context,
+        (x, y),
+        width as f32,
+        height as f32,
+        position_attribute_location,
+    );
+    setup_buffer(
+        &Pager::inner().context,
+        (0f32, 0f32),
+        1f32,
+        1f32,
+        tex_coord_attribute_location,
+    );
+
+    Pager::inner().context.draw_arrays(web_sys::WebGlRenderingContext::TRIANGLE_STRIP, 0, 6);
+}
+
+pub fn setup_buffer(
+    context: &web_sys::WebGlRenderingContext,
+    start_point: (f32, f32),
+    width: f32,
+    height: f32,
+    indx: u32,
+) {
+    let position_buffer = context.create_buffer().unwrap();
+    context.bind_buffer(web_sys::WebGlRenderingContext::ARRAY_BUFFER, Some(&position_buffer));
+
+    let (x1, y1) = start_point;
+    let x2 = x1 + width;
+    let y2 = y1 + height;
+    unsafe {
+        let arr = [x1, y1, x2, y1, x1, y2, x1, y2, x2, y1, x2, y2];
+        let vert_array = js_sys::Float32Array::view(&arr);
+        context.buffer_data_with_array_buffer_view(
+            web_sys::WebGlRenderingContext::ARRAY_BUFFER,
+            &vert_array,
+            web_sys::WebGlRenderingContext::STATIC_DRAW,
+        );
+    }
+
+    context.vertex_attrib_pointer_with_f64(
+        indx,
+        2,
+        web_sys::WebGlRenderingContext::FLOAT,
+        false,
+        0,
+        0.0,
+    );
 }
 
 fn window() -> web_sys::Window {
