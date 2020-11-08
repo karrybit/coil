@@ -2,11 +2,10 @@ use web_sys::{WebGlProgram, WebGlRenderingContext};
 
 pub fn setup(
     context: &WebGlRenderingContext,
-    program: &WebGlProgram,
-    attribute: &str,
     start_point: (f32, f32),
     width: f32,
     height: f32,
+    position_attribute_location: u32,
 ) {
     let position_buffer = context.create_buffer().unwrap();
     // .ok_or("failed to create position buffer")?;
@@ -24,9 +23,6 @@ pub fn setup(
             WebGlRenderingContext::STATIC_DRAW,
         );
     }
-
-    let position_attribute_location = context.get_attrib_location(program, attribute);
-    context.enable_vertex_attrib_array(position_attribute_location as u32);
 
     let size = 2; // 2 components per iteration
     let type_ = WebGlRenderingContext::FLOAT; // the data is 32bit floats
