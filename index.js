@@ -6,51 +6,7 @@ const imageURL2 = 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Web
 let imageBuf2 = undefined;
 let count = 0;
 
-window.transition = async function transition() {
-  if (!WASM) {
-    WASM = await pkg;
-  }
-  let buf = undefined;
-  if (count % 2 == 0) {
-    if (!imageBuf1) {
-      const image = await fetch(imageURL1);
-      imageBuf1 = new Uint8Array(await (await image.blob()).arrayBuffer());
-    }
-    buf = imageBuf1;
-  } else {
-    if (!imageBuf2) {
-      const image = await fetch(imageURL2);
-      imageBuf2 = new Uint8Array(await (await image.blob()).arrayBuffer());
-    }
-    buf = imageBuf2;
-  }
-  WASM.transition(buf, false);
-  count++;
-};
-
-window.revTransition = async function revTransition() {
-  if (!WASM) {
-    WASM = await pkg;
-  }
-  let buf = undefined;
-  if (count % 2 == 0) {
-    if (!imageBuf1) {
-      const image = await fetch(imageURL1);
-      imageBuf1 = new Uint8Array(await (await image.blob()).arrayBuffer());
-    }
-    buf = imageBuf1;
-  } else {
-    if (!imageBuf2) {
-      const image = await fetch(imageURL2);
-      imageBuf2 = new Uint8Array(await (await image.blob()).arrayBuffer());
-    }
-    buf = imageBuf2;
-  }
-  WASM.transition(buf, true);
-  count++;
-};
-
-window.pager = async function pager() {
+const load = async () => {
   if (!WASM) {
     WASM = await pkg;
   }
@@ -58,6 +14,30 @@ window.pager = async function pager() {
     const image = await fetch(imageURL1);
     imageBuf1 = new Uint8Array(await (await image.blob()).arrayBuffer());
   }
+  if (!imageBuf2) {
+    const image = await fetch(imageURL2);
+    imageBuf2 = new Uint8Array(await (await image.blob()).arrayBuffer());
+  }
+}
+
+window.transition = async function transition() {
+  await load();
+  let before = count % 2 == 0 ? imageBuf1 : imageBuf2;
+  let after = count % 2 != 0 ? imageBuf1 : imageBuf2;
+  WASM.transition(before, after, false);
+  count++;
+};
+
+window.revTransition = async function revTransition() {
+  await load();
+  let before = count % 2 == 0 ? imageBuf1 : imageBuf2;
+  let after = count % 2 != 0 ? imageBuf1 : imageBuf2;
+  WASM.transition(before, after, true);
+  count++;
+};
+
+window.pager = async function pager() {
+  await load();
   const buf = imageBuf1;
   const { Pager } = WASM
   const pager = new Pager(buf, false);

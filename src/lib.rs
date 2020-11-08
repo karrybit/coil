@@ -219,19 +219,27 @@ impl Pager {
     }
 }
 
+fn to_rgba(data: Vec<u8>) -> Vec<u8> {
+    let img = image::load_from_memory(&data);
+    let img = img.unwrap();
+    let img = img.to_rgba();
+    let pixels = img.pixels();
+    let rgba = pixels
+        .map(|ref rgba| rgba.0.iter())
+        .flatten()
+        .collect::<Vec<&u8>>();
+    let rgba = rgba.clone().into_iter().copied().collect::<Vec<u8>>();
+    rgba
+}
+
 #[wasm_bindgen]
-pub async fn transition(data: Vec<u8>, rev: bool) -> Result<(), JsValue> {
+pub async fn transition(before_data: Vec<u8>, after_data: Vec<u8>, rev: bool) -> Result<(), JsValue> {
     let window = web_sys::window().unwrap();
     let document = window.document().unwrap();
     let canvas = document.get_element_by_id("canvas").unwrap();
     let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>()?;
 
-    let img = image::load_from_memory(&data);
-    let img = img.unwrap();
-    let (width, height) = img.dimensions();
     let (width, height) = (canvas.width(), canvas.height());
-    // canvas.set_width(width);
-    // canvas.set_height(height);
 
     let context = canvas
         .get_context("webgl")?
@@ -267,36 +275,16 @@ pub async fn transition(data: Vec<u8>, rev: bool) -> Result<(), JsValue> {
         WebGlRenderingContext::NEAREST as i32,
     );
 
-    let img = img.to_rgba();
-    let pixels = img.pixels();
-    let rgba = pixels
-        .map(|ref rgba| rgba.0.iter())
-        .flatten()
-        .collect::<Vec<&u8>>();
-    let rgba = rgba.clone().into_iter().copied().collect::<Vec<u8>>();
+    let before_rgba = to_rgba(before_data);
+    let after_rgba = to_rgba(after_data);
 
     context.pixel_storei(WebGlRenderingContext::UNPACK_ALIGNMENT, 1);
 
-    unsafe {
-        let vert_array = js_sys::Uint8Array::view(&rgba);
-        let _ = context
-            .tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
-                WebGlRenderingContext::TEXTURE_2D,
-                0,
-                WebGlRenderingContext::RGBA as i32,
-                width as i32,
-                height as i32,
-                0,
-                WebGlRenderingContext::RGBA,
-                WebGlRenderingContext::UNSIGNED_BYTE,
-                Some(&vert_array),
-            );
-    }
 
     let f = std::rc::Rc::new(std::cell::RefCell::new(None));
     let g = f.clone();
 
-    let diff = width / 20;
+    let diff = width / 10;
     let mut i = 0;
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
         if i > width {
@@ -306,8 +294,24 @@ pub async fn transition(data: Vec<u8>, rev: bool) -> Result<(), JsValue> {
             return;
         }
 
-        context.clear_color(0.0, 0.0, 0.0, 0.0);
-        context.clear(WebGlRenderingContext::COLOR_BUFFER_BIT);
+        unsafe {
+            let vert_array = js_sys::Uint8Array::view(&before_rgba);
+            let _ = context
+                .tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
+                    WebGlRenderingContext::TEXTURE_2D,
+                    0,
+                    WebGlRenderingContext::RGBA as i32,
+                    width as i32,
+                    height as i32,
+                    0,
+                    WebGlRenderingContext::RGBA,
+                    WebGlRenderingContext::UNSIGNED_BYTE,
+                    Some(&vert_array),
+                );
+        }
+
+        // context.clear_color(0.0, 0.0, 0.0, 0.0);
+        // context.clear(WebGlRenderingContext::COLOR_BUFFER_BIT);
 
         let x = if rev {
             f32min(i as f32, width as f32)
@@ -339,6 +343,21 @@ pub async fn transition(data: Vec<u8>, rev: bool) -> Result<(), JsValue> {
         );
         context.draw_arrays(WebGlRenderingContext::TRIANGLE_STRIP, 0, 6);
 
+        unsafe {
+            let vert_array = js_sys::Uint8Array::view(&after_rgba);
+            let _ = context
+                .tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
+                    WebGlRenderingContext::TEXTURE_2D,
+                    0,
+                    WebGlRenderingContext::RGBA as i32,
+                    width as i32,
+                    height as i32,
+                    0,
+                    WebGlRenderingContext::RGBA,
+                    WebGlRenderingContext::UNSIGNED_BYTE,
+                    Some(&vert_array),
+                );
+        }
         let x = if rev {
             f32min(0f32, -((width - i) as f32))
         } else {
