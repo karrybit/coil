@@ -1,7 +1,9 @@
 let pkg = import("./pkg").catch(console.error);
 let WASM = undefined;
-let jsBuf = undefined;
-let wasmBuf = undefined;
+const imageURL1 = 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Unofficial_JavaScript_logo_2.svg/480px-Unofficial_JavaScript_logo_2.svg.png';
+let imageBuf1 = undefined;
+const imageURL2 = 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/WebAssembly_Logo.svg/480px-WebAssembly_Logo.svg.png';
+let imageBuf2 = undefined;
 let count = 0;
 
 window.transition = async function transition() {
@@ -10,17 +12,17 @@ window.transition = async function transition() {
   }
   let buf = undefined;
   if (count % 2 == 0) {
-    if (!jsBuf) {
-      const image = await fetch('https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Unofficial_JavaScript_logo_2.svg/480px-Unofficial_JavaScript_logo_2.svg.png');
-      jsBuf = new Uint8Array(await (await image.blob()).arrayBuffer());
+    if (!imageBuf1) {
+      const image = await fetch(imageURL1);
+      imageBuf1 = new Uint8Array(await (await image.blob()).arrayBuffer());
     }
-    buf = jsBuf;
+    buf = imageBuf1;
   } else {
-    if (!wasmBuf) {
-      const image = await fetch('https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/WebAssembly_Logo.svg/180px-WebAssembly_Logo.svg.png');
-      wasmBuf = new Uint8Array(await (await image.blob()).arrayBuffer());
+    if (!imageBuf2) {
+      const image = await fetch(imageURL2);
+      imageBuf2 = new Uint8Array(await (await image.blob()).arrayBuffer());
     }
-    buf = wasmBuf;
+    buf = imageBuf2;
   }
   WASM.transition(buf, false);
   count++;
@@ -32,17 +34,17 @@ window.revTransition = async function revTransition() {
   }
   let buf = undefined;
   if (count % 2 == 0) {
-    if (!jsBuf) {
-      const image = await fetch('https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Unofficial_JavaScript_logo_2.svg/480px-Unofficial_JavaScript_logo_2.svg.png');
-      jsBuf = new Uint8Array(await (await image.blob()).arrayBuffer());
+    if (!imageBuf1) {
+      const image = await fetch(imageURL1);
+      imageBuf1 = new Uint8Array(await (await image.blob()).arrayBuffer());
     }
-    buf = jsBuf;
+    buf = imageBuf1;
   } else {
-    if (!wasmBuf) {
-      const image = await fetch('https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/WebAssembly_Logo.svg/180px-WebAssembly_Logo.svg.png');
-      wasmBuf = new Uint8Array(await (await image.blob()).arrayBuffer());
+    if (!imageBuf2) {
+      const image = await fetch(imageURL2);
+      imageBuf2 = new Uint8Array(await (await image.blob()).arrayBuffer());
     }
-    buf = wasmBuf;
+    buf = imageBuf2;
   }
   WASM.transition(buf, true);
   count++;
@@ -52,11 +54,11 @@ window.pager = async function pager() {
   if (!WASM) {
     WASM = await pkg;
   }
-  if (!jsBuf) {
-    const image = await fetch('https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Unofficial_JavaScript_logo_2.svg/480px-Unofficial_JavaScript_logo_2.svg.png');
-    jsBuf = new Uint8Array(await (await image.blob()).arrayBuffer());
+  if (!imageBuf1) {
+    const image = await fetch(imageURL1);
+    imageBuf1 = new Uint8Array(await (await image.blob()).arrayBuffer());
   }
-  const buf = jsBuf;
+  const buf = imageBuf1;
   const { Pager } = WASM
   const pager = new Pager(buf, false);
   console.log(pager);
