@@ -3,7 +3,6 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys;
 
-mod processor;
 mod shader;
 
 #[wasm_bindgen]
@@ -39,7 +38,7 @@ impl Pager {
 
         let vert_shader = shader::new_vertex_shader(&context)?;
         let frag_shader = shader::new_fragment_shader(&context)?;
-        let program = processor::link_program(&context, &vert_shader, &frag_shader)?;
+        let program = shader::link_program(&context, &vert_shader, &frag_shader)?;
         context.use_program(Some(&program));
 
         let texture = context.create_texture();
