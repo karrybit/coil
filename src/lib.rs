@@ -107,6 +107,45 @@ fn to_rgba(data: Vec<u8>) -> Vec<u8> {
     rgba
 }
 
+fn draw(pager: &Pager, image: &[u8], x: f32, y: f32 ,i: u32) {
+    unsafe {
+        let vert_array = js_sys::Uint8Array::view(&image);
+        let _ = pager.context
+            .tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
+                web_sys::WebGlRenderingContext::TEXTURE_2D,
+                0,
+                web_sys::WebGlRenderingContext::RGBA as i32,
+                pager.canvas.width() as i32,
+                pager.canvas.height() as i32,
+                0,
+                web_sys::WebGlRenderingContext::RGBA,
+                web_sys::WebGlRenderingContext::UNSIGNED_BYTE,
+                Some(&vert_array),
+            );
+    }
+
+    unsafe {
+        log(format!("i:{}, x:{}, y:{}", i, x, y).as_str());
+    }
+    // attributeの設定
+    attribute::setup(
+        &pager.context,
+        (x, y),
+        pager.canvas.width() as f32,
+        pager.canvas.height() as f32,
+        pager.position_attribute_location,
+    );
+    attribute::setup(
+        &pager.context,
+        (0f32, 0f32),
+        1f32,
+        1f32,
+        pager.tex_coord_attribute_location,
+    );
+
+    pager.context.draw_arrays(web_sys::WebGlRenderingContext::TRIANGLE_STRIP, 0, 6);
+}
+
 #[wasm_bindgen]
 pub async fn transition(before_data: Vec<u8>, after_data: Vec<u8>, rev: bool) -> Result<(), JsValue> {
     let pager = Pager::new()?;
@@ -127,91 +166,21 @@ pub async fn transition(before_data: Vec<u8>, after_data: Vec<u8>, rev: bool) ->
             return;
         }
 
-        unsafe {
-            let vert_array = js_sys::Uint8Array::view(&before_rgba);
-            let _ = pager.context
-                .tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
-                    web_sys::WebGlRenderingContext::TEXTURE_2D,
-                    0,
-                    web_sys::WebGlRenderingContext::RGBA as i32,
-                    pager.canvas.width() as i32,
-                    pager.canvas.height() as i32,
-                    0,
-                    web_sys::WebGlRenderingContext::RGBA,
-                    web_sys::WebGlRenderingContext::UNSIGNED_BYTE,
-                    Some(&vert_array),
-                );
-        }
-
         let x = if rev {
             std::cmp::min(i, pager.canvas.width()) as f32
         } else {
             std::cmp::max(-(i as i32), -(pager.canvas.height() as i32)) as f32
         };
         let y = 0f32;
-        unsafe {
-            log(format!("i:{}, x:{}, y:{}", i, x, y).as_str());
-        }
-        // attributeの設定
-        attribute::setup(
-            &pager.context,
-            (x, y),
-            pager.canvas.width() as f32,
-            pager.canvas.height() as f32,
-            pager.position_attribute_location,
-        );
-        attribute::setup(
-            &pager.context,
-            (0f32, 0f32),
-            1f32,
-            1f32,
-            pager.tex_coord_attribute_location,
-        );
+        draw(&pager, &before_rgba, x, y, i);
 
-        pager.context.draw_arrays(web_sys::WebGlRenderingContext::TRIANGLE_STRIP, 0, 6);
-
-        unsafe {
-            let vert_array = js_sys::Uint8Array::view(&after_rgba);
-            let _ = pager.context
-                .tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
-                    web_sys::WebGlRenderingContext::TEXTURE_2D,
-                    0,
-                    web_sys::WebGlRenderingContext::RGBA as i32,
-                    pager.canvas.width() as i32,
-                    pager.canvas.height() as i32,
-                    0,
-                    web_sys::WebGlRenderingContext::RGBA,
-                    web_sys::WebGlRenderingContext::UNSIGNED_BYTE,
-                    Some(&vert_array),
-                );
-        }
         let x = if rev {
             std::cmp::min(0, -((pager.canvas.width()-i) as i32)) as f32
         } else {
             std::cmp::max(0, pager.canvas.width()-i) as f32
         };
         let y = 0f32;
-        unsafe {
-            log(format!("i:{}, x:{}, y:{}", i, x, y).as_str());
-        }
-
-        // attributeの設定
-        attribute::setup(
-            &pager.context,
-            (x, y),
-            pager.canvas.width() as f32,
-            pager.canvas.height() as f32,
-            pager.position_attribute_location as _,
-        );
-        attribute::setup(
-            &pager.context,
-            (0f32, 0f32),
-            1f32,
-            1f32,
-            pager.tex_coord_attribute_location as _
-        );
-
-        pager.context.draw_arrays(web_sys::WebGlRenderingContext::TRIANGLE_STRIP, 0, 6);
+        draw(&pager, &after_rgba, x, y, i);
 
         i += diff;
         request_animation_frame(f.borrow().as_ref().unwrap());
