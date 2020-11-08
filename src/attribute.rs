@@ -5,7 +5,7 @@ pub fn setup(
     start_point: (f32, f32),
     width: f32,
     height: f32,
-    position_attribute_location: u32,
+    indx: u32,
 ) {
     let position_buffer = context.create_buffer().unwrap();
     // .ok_or("failed to create position buffer")?;
@@ -24,19 +24,13 @@ pub fn setup(
         );
     }
 
-    let size = 2; // 2 components per iteration
-    let type_ = WebGlRenderingContext::FLOAT; // the data is 32bit floats
-    let normalize = false; // don't normalize the data
-    let stride = 0; // 0 = move forward size * sizeof(type) each iteration to get the next position
-    let offset = 0.0; // start at the beginning of the buffer
-
     // ARRAY_BUFFERに結合されたバッファーを、現在の頂点バッファーオブジェクトの一般的な頂点属性に結合して、そのレイアウトを指定する
     context.vertex_attrib_pointer_with_f64(
-        position_attribute_location as u32,
-        size,
-        type_,
-        normalize,
-        stride,
-        offset,
+        indx,
+        2,
+        WebGlRenderingContext::FLOAT,
+        false,
+        0,
+        0.0,
     );
 }
