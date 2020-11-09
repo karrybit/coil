@@ -211,8 +211,11 @@ fn transition(
     let speed = width / interval;
     let mut progress = 0u32;
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
-        if progress > width {
+        if progress == width {
             return;
+        }
+        if progress > width {
+            progress = width
         }
 
         let (bx, by) = calc_position(progress, width, height, direction, Position::Before);
@@ -237,12 +240,10 @@ fn transition(
             tex_coord_attribute_location,
         );
 
-        let status = get_element_by("speed");
+        let status = get_element_by("progress");
         let before_image = get_element_by("before_image");
         let after_image = get_element_by("after_image");
-        status.set_text_content(Some(
-            format!("speed: {}, progress: {}", speed, progress).as_str(),
-        ));
+        status.set_text_content(Some(format!("progress: {}", progress).as_str()));
         before_image.set_text_content(Some(format!("x: {}, y: {}", bx, by).as_str()));
         after_image.set_text_content(Some(format!("x: {}, y: {}", ax, ay).as_str()));
 

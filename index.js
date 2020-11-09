@@ -19,28 +19,32 @@ const load = async () => {
   }
 }
 
-const INTERVAL = 12;
+let INTERVAL = 12;
 
 window.up = async function up() {
   await load();
   WASM.Pager.initialize(imageBuf1, imageBuf2);
+  INTERVAL = parseInt(document.getElementById("interval").value);
   WASM.Pager.up(INTERVAL);
 };
 
 window.right = async function right() {
   await load();
   WASM.Pager.initialize(imageBuf1, imageBuf2);
+  INTERVAL = parseInt(document.getElementById("interval").value);
   WASM.Pager.right(INTERVAL);
 };
 
 window.down = async function down() {
   await load();
   WASM.Pager.initialize(imageBuf1, imageBuf2);
+  INTERVAL = parseInt(document.getElementById("interval").value);
   WASM.Pager.down(INTERVAL);
 };
 
 window.left = async function left() {
   await load();
   WASM.Pager.initialize(imageBuf1, imageBuf2);
+  INTERVAL = parseInt(document.getElementById("interval").value);
   WASM.Pager.left(INTERVAL);
 };
