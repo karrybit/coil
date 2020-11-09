@@ -1,4 +1,6 @@
-# Viewer written in Rust with WebGL
+# coil
+
+### Viewer written in Rust with WebGL
 
 ```sh
 npm run serve
