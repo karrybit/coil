@@ -11,6 +11,7 @@ extern "C" {
 
 #[wasm_bindgen]
 pub struct Pager {
+    index: usize,
     canvas: web_sys::HtmlCanvasElement,
     context: web_sys::WebGlRenderingContext,
     position_attribute_location: u32,
@@ -18,10 +19,28 @@ pub struct Pager {
 }
 
 static mut PAGER: Option<Box<Pager>> = None;
+static mut IMAGES: Vec<Vec<u8>> = vec![];
+
+impl Pager {
+    fn inner() -> &'static Pager {
+        unsafe { PAGER.as_ref().unwrap() }
+    }
+    fn inner_mut() -> &'static mut Pager {
+        unsafe { PAGER.as_mut().unwrap() }
+    }
+    fn images() -> (&'static [u8], &'static [u8]) {
+        unsafe {
+            (
+                IMAGES.get(Pager::inner().index & 1).unwrap(),
+                IMAGES.get((Pager::inner().index + 1) & 1).unwrap(),
+            )
+        }
+    }
+}
 
 #[wasm_bindgen]
 impl Pager {
-    pub fn initialize() -> Result<(), JsValue> {
+    pub fn initialize(before_image: Vec<u8>, after_image: Vec<u8>) -> Result<(), JsValue> {
         unsafe {
             if PAGER.is_some() {
                 return Ok(());
@@ -78,8 +97,17 @@ impl Pager {
         let resolution_location = context.get_uniform_location(&program, "u_resolution");
         context.uniform2f(resolution_location.as_ref(), width as f32, height as f32);
 
+        let before_image = to_rgba(before_image);
+        let after_image = to_rgba(after_image);
+
+        unsafe {
+            IMAGES.push(before_image);
+            IMAGES.push(after_image);
+        }
+
         unsafe {
             PAGER = Some(Box::new(Pager {
+                index: 0,
                 context,
                 canvas,
                 position_attribute_location,
@@ -90,19 +118,9 @@ impl Pager {
         Ok(())
     }
 
-    fn inner() -> &'static Pager {
-        unsafe { PAGER.as_ref().unwrap() }
-    }
-
-    #[wasm_bindgen]
-    pub async fn up(
-        interval: u32,
-        before_data: Vec<u8>,
-        after_data: Vec<u8>,
-    ) -> Result<(), JsValue> {
-        let before_image = to_rgba(before_data);
-        let after_image = to_rgba(after_data);
+    pub async fn up(interval: u32) -> Result<(), JsValue> {
         let inner = Pager::inner();
+        let (before_image, after_image) = Pager::images();
         transition(
             interval,
             Direction::Up,
@@ -115,15 +133,10 @@ impl Pager {
         );
         Ok(())
     }
-    #[wasm_bindgen]
-    pub async fn right(
-        interval: u32,
-        before_data: Vec<u8>,
-        after_data: Vec<u8>,
-    ) -> Result<(), JsValue> {
-        let before_image = to_rgba(before_data);
-        let after_image = to_rgba(after_data);
+
+    pub async fn right(interval: u32) -> Result<(), JsValue> {
         let inner = Pager::inner();
+        let (before_image, after_image) = Pager::images();
         transition(
             interval,
             Direction::Right,
@@ -136,15 +149,10 @@ impl Pager {
         );
         Ok(())
     }
-    #[wasm_bindgen]
-    pub async fn down(
-        interval: u32,
-        before_data: Vec<u8>,
-        after_data: Vec<u8>,
-    ) -> Result<(), JsValue> {
-        let before_image = to_rgba(before_data);
-        let after_image = to_rgba(after_data);
+
+    pub async fn down(interval: u32) -> Result<(), JsValue> {
         let inner = Pager::inner();
+        let (before_image, after_image) = Pager::images();
         transition(
             interval,
             Direction::Down,
@@ -157,15 +165,10 @@ impl Pager {
         );
         Ok(())
     }
-    #[wasm_bindgen]
-    pub async fn left(
-        interval: u32,
-        before_data: Vec<u8>,
-        after_data: Vec<u8>,
-    ) -> Result<(), JsValue> {
-        let before_image = to_rgba(before_data);
-        let after_image = to_rgba(after_data);
+
+    pub async fn left(interval: u32) -> Result<(), JsValue> {
         let inner = Pager::inner();
+        let (before_image, after_image) = Pager::images();
         transition(
             interval,
             Direction::Left,
@@ -197,8 +200,8 @@ fn transition(
     direction: Direction,
     width: u32,
     height: u32,
-    before_image: Vec<u8>,
-    after_image: Vec<u8>,
+    before_image: &'static [u8],
+    after_image: &'static [u8],
     position_attribute_location: u32,
     tex_coord_attribute_location: u32,
 ) {
@@ -248,6 +251,8 @@ fn transition(
         request_animation_frame(f.borrow().as_ref().unwrap());
     }) as Box<dyn FnMut()>));
     request_animation_frame(g.borrow().as_ref().unwrap());
+
+    Pager::inner_mut().index += 1;
 }
 
 #[derive(Copy, Clone)]

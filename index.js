@@ -4,7 +4,6 @@ const imageURL1 = 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Uno
 let imageBuf1 = undefined;
 const imageURL2 = 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/WebAssembly_Logo.svg/480px-WebAssembly_Logo.svg.png';
 let imageBuf2 = undefined;
-let count = 0;
 
 const load = async () => {
   if (!WASM) {
@@ -24,36 +23,24 @@ const INTERVAL = 12;
 
 window.up = async function up() {
   await load();
-  let before = count % 2 == 0 ? imageBuf1 : imageBuf2;
-  let after = count % 2 != 0 ? imageBuf1 : imageBuf2;
-  WASM.Pager.initialize();
-  WASM.Pager.up(INTERVAL, before, after);
-  count++;
+  WASM.Pager.initialize(imageBuf1, imageBuf2);
+  WASM.Pager.up(INTERVAL);
 };
 
 window.right = async function right() {
   await load();
-  let before = count % 2 == 0 ? imageBuf1 : imageBuf2;
-  let after = count % 2 != 0 ? imageBuf1 : imageBuf2;
-  WASM.Pager.initialize();
-  WASM.Pager.right(INTERVAL, before, after);
-  count++;
+  WASM.Pager.initialize(imageBuf1, imageBuf2);
+  WASM.Pager.right(INTERVAL);
 };
 
 window.down = async function down() {
   await load();
-  let before = count % 2 == 0 ? imageBuf1 : imageBuf2;
-  let after = count % 2 != 0 ? imageBuf1 : imageBuf2;
-  WASM.Pager.initialize();
-  WASM.Pager.down(INTERVAL, before, after);
-  count++;
+  WASM.Pager.initialize(imageBuf1, imageBuf2);
+  WASM.Pager.down(INTERVAL);
 };
 
 window.left = async function left() {
   await load();
-  let before = count % 2 == 0 ? imageBuf1 : imageBuf2;
-  let after = count % 2 != 0 ? imageBuf1 : imageBuf2;
-  WASM.Pager.initialize();
-  WASM.Pager.left(INTERVAL, before, after);
-  count++;
+  WASM.Pager.initialize(imageBuf1, imageBuf2);
+  WASM.Pager.left(INTERVAL);
 };
