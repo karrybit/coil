@@ -38,6 +38,18 @@ impl Pager {
     }
 }
 
+fn to_rgba(data: Vec<u8>) -> Vec<u8> {
+    let img = image::load_from_memory(&data);
+    let img = img.unwrap();
+    let img = img.to_rgba();
+    let pixels = img.pixels();
+    let rgba = pixels
+        .map(|ref rgba| rgba.0.iter())
+        .flatten()
+        .collect::<Vec<&u8>>();
+    rgba.clone().into_iter().copied().collect::<Vec<u8>>()
+}
+
 #[wasm_bindgen]
 impl Pager {
     pub fn initialize(before_image: Vec<u8>, after_image: Vec<u8>) -> Result<(), JsValue> {
@@ -181,18 +193,6 @@ impl Pager {
         );
         Ok(())
     }
-}
-
-fn to_rgba(data: Vec<u8>) -> Vec<u8> {
-    let img = image::load_from_memory(&data);
-    let img = img.unwrap();
-    let img = img.to_rgba();
-    let pixels = img.pixels();
-    let rgba = pixels
-        .map(|ref rgba| rgba.0.iter())
-        .flatten()
-        .collect::<Vec<&u8>>();
-    rgba.clone().into_iter().copied().collect::<Vec<u8>>()
 }
 
 fn transition(
