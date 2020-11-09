@@ -211,9 +211,6 @@ fn transition(
     let speed = width / interval;
     let mut progress = 0u32;
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
-        if progress == width {
-            return;
-        }
         if progress > width {
             progress = width
         }
@@ -246,6 +243,10 @@ fn transition(
         status.set_text_content(Some(format!("progress: {}", progress).as_str()));
         before_image.set_text_content(Some(format!("x: {}, y: {}", bx, by).as_str()));
         after_image.set_text_content(Some(format!("x: {}, y: {}", ax, ay).as_str()));
+
+        if progress == width {
+            return;
+        }
 
         progress += speed;
 
