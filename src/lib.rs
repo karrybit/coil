@@ -1,7 +1,5 @@
-use image;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys;
 
 mod shader;
 
@@ -26,7 +24,7 @@ impl Pager {
     pub fn initialize() -> Result<(), JsValue> {
         unsafe {
             if PAGER.is_some() {
-                return Ok(())
+                return Ok(());
             }
         }
         let canvas = get_element_by("canvas").dyn_into::<web_sys::HtmlCanvasElement>()?;
@@ -67,23 +65,21 @@ impl Pager {
 
         context.pixel_storei(web_sys::WebGlRenderingContext::UNPACK_ALIGNMENT, 1);
 
-        let position_attribute_location = context.get_attrib_location(&program, "a_position") as u32;
+        let position_attribute_location =
+            context.get_attrib_location(&program, "a_position") as u32;
         context.enable_vertex_attrib_array(position_attribute_location);
-        let tex_coord_attribute_location = context.get_attrib_location(&program, "a_texCoord") as u32;
+        let tex_coord_attribute_location =
+            context.get_attrib_location(&program, "a_texCoord") as u32;
         context.enable_vertex_attrib_array(tex_coord_attribute_location);
 
         let (width, height) = (canvas.width(), canvas.height());
         context.viewport(0, 0, width as i32, height as i32);
 
         let resolution_location = context.get_uniform_location(&program, "u_resolution");
-        context.uniform2f(
-            resolution_location.as_ref(),
-            width as f32,
-            height as f32,
-        );
+        context.uniform2f(resolution_location.as_ref(), width as f32, height as f32);
 
         unsafe {
-            PAGER = Some(Box::new(Pager{
+            PAGER = Some(Box::new(Pager {
                 context,
                 canvas,
                 position_attribute_location,
@@ -95,41 +91,91 @@ impl Pager {
     }
 
     fn inner() -> &'static Pager {
-        unsafe {
-            PAGER.as_ref().unwrap()
-        }
+        unsafe { PAGER.as_ref().unwrap() }
     }
 
     #[wasm_bindgen]
-    pub async fn up(interval: u32, before_data: Vec<u8>, after_data: Vec<u8>) -> Result<(), JsValue> {
+    pub async fn up(
+        interval: u32,
+        before_data: Vec<u8>,
+        after_data: Vec<u8>,
+    ) -> Result<(), JsValue> {
         let before_image = to_rgba(before_data);
         let after_image = to_rgba(after_data);
         let inner = Pager::inner();
-        transition(interval, Direction::Up, inner.canvas.width(), inner.canvas.height(), before_image, after_image, inner.position_attribute_location, inner.tex_coord_attribute_location);
+        transition(
+            interval,
+            Direction::Up,
+            inner.canvas.width(),
+            inner.canvas.height(),
+            before_image,
+            after_image,
+            inner.position_attribute_location,
+            inner.tex_coord_attribute_location,
+        );
         Ok(())
     }
     #[wasm_bindgen]
-    pub async fn right(interval: u32, before_data: Vec<u8>, after_data: Vec<u8>) -> Result<(), JsValue> {
+    pub async fn right(
+        interval: u32,
+        before_data: Vec<u8>,
+        after_data: Vec<u8>,
+    ) -> Result<(), JsValue> {
         let before_image = to_rgba(before_data);
         let after_image = to_rgba(after_data);
         let inner = Pager::inner();
-        transition(interval, Direction::Right, inner.canvas.width(), inner.canvas.height(), before_image, after_image, inner.position_attribute_location, inner.tex_coord_attribute_location);
+        transition(
+            interval,
+            Direction::Right,
+            inner.canvas.width(),
+            inner.canvas.height(),
+            before_image,
+            after_image,
+            inner.position_attribute_location,
+            inner.tex_coord_attribute_location,
+        );
         Ok(())
     }
     #[wasm_bindgen]
-    pub async fn down(interval: u32, before_data: Vec<u8>, after_data: Vec<u8>) -> Result<(), JsValue> {
+    pub async fn down(
+        interval: u32,
+        before_data: Vec<u8>,
+        after_data: Vec<u8>,
+    ) -> Result<(), JsValue> {
         let before_image = to_rgba(before_data);
         let after_image = to_rgba(after_data);
         let inner = Pager::inner();
-        transition(interval, Direction::Down, inner.canvas.width(), inner.canvas.height(), before_image, after_image, inner.position_attribute_location, inner.tex_coord_attribute_location);
+        transition(
+            interval,
+            Direction::Down,
+            inner.canvas.width(),
+            inner.canvas.height(),
+            before_image,
+            after_image,
+            inner.position_attribute_location,
+            inner.tex_coord_attribute_location,
+        );
         Ok(())
     }
     #[wasm_bindgen]
-    pub async fn left(interval: u32, before_data: Vec<u8>, after_data: Vec<u8>) -> Result<(), JsValue> {
+    pub async fn left(
+        interval: u32,
+        before_data: Vec<u8>,
+        after_data: Vec<u8>,
+    ) -> Result<(), JsValue> {
         let before_image = to_rgba(before_data);
         let after_image = to_rgba(after_data);
         let inner = Pager::inner();
-        transition(interval, Direction::Left, inner.canvas.width(), inner.canvas.height(), before_image, after_image, inner.position_attribute_location, inner.tex_coord_attribute_location);
+        transition(
+            interval,
+            Direction::Left,
+            inner.canvas.width(),
+            inner.canvas.height(),
+            before_image,
+            after_image,
+            inner.position_attribute_location,
+            inner.tex_coord_attribute_location,
+        );
         Ok(())
     }
 }
@@ -143,11 +189,19 @@ fn to_rgba(data: Vec<u8>) -> Vec<u8> {
         .map(|ref rgba| rgba.0.iter())
         .flatten()
         .collect::<Vec<&u8>>();
-    let rgba = rgba.clone().into_iter().copied().collect::<Vec<u8>>();
-    rgba
+    rgba.clone().into_iter().copied().collect::<Vec<u8>>()
 }
 
-fn transition(interval: u32, direction: Direction, width: u32, height: u32, before_image: Vec<u8>, after_image: Vec<u8>, position_attribute_location: u32, tex_coord_attribute_location: u32) {
+fn transition(
+    interval: u32,
+    direction: Direction,
+    width: u32,
+    height: u32,
+    before_image: Vec<u8>,
+    after_image: Vec<u8>,
+    position_attribute_location: u32,
+    tex_coord_attribute_location: u32,
+) {
     let f = std::rc::Rc::new(std::cell::RefCell::new(None));
     let g = f.clone();
 
@@ -159,15 +213,33 @@ fn transition(interval: u32, direction: Direction, width: u32, height: u32, befo
         }
 
         let (bx, by) = calc_position(progress, width, height, direction, Position::Before);
-        draw(&before_image, bx, by, width, height, position_attribute_location, tex_coord_attribute_location);
+        draw(
+            &before_image,
+            bx,
+            by,
+            width,
+            height,
+            position_attribute_location,
+            tex_coord_attribute_location,
+        );
 
         let (ax, ay) = calc_position(progress, width, height, direction, Position::After);
-        draw(&after_image, ax, ay, width, height, position_attribute_location, tex_coord_attribute_location);
+        draw(
+            &after_image,
+            ax,
+            ay,
+            width,
+            height,
+            position_attribute_location,
+            tex_coord_attribute_location,
+        );
 
         let status = get_element_by("speed");
         let before_image = get_element_by("before_image");
         let after_image = get_element_by("after_image");
-        status.set_text_content(Some(format!("speed: {}, progress: {}", speed, progress).as_str()));
+        status.set_text_content(Some(
+            format!("speed: {}, progress: {}", speed, progress).as_str(),
+        ));
         before_image.set_text_content(Some(format!("x: {}, y: {}", bx, by).as_str()));
         after_image.set_text_content(Some(format!("x: {}, y: {}", ax, ay).as_str()));
 
@@ -192,26 +264,47 @@ enum Position {
     After,
 }
 
-fn calc_position(progress: u32, width: u32, height: u32, direction: Direction, position: Position) -> (f32, f32) {
+fn calc_position(
+    progress: u32,
+    width: u32,
+    height: u32,
+    direction: Direction,
+    position: Position,
+) -> (f32, f32) {
     use Direction::*;
     use Position::*;
 
     match (direction, position) {
-        (Up, Before) => (0f32, std::cmp::max(-(progress as i32), -(height as i32)) as f32),
-        (Up, After) => (0f32, std::cmp::max(0, height-progress) as f32),
+        (Up, Before) => (
+            0f32,
+            std::cmp::max(-(progress as i32), -(height as i32)) as f32,
+        ),
+        (Up, After) => (0f32, std::cmp::max(0, height - progress) as f32),
         (Right, Before) => (std::cmp::min(progress, width) as f32, 0f32),
-        (Right, After) => (std::cmp::min(0, -((width-progress) as i32)) as f32, 0f32),
+        (Right, After) => (std::cmp::min(0, -((width - progress) as i32)) as f32, 0f32),
         (Down, Before) => (0f32, std::cmp::min(progress, height) as f32),
-        (Down, After) => (0f32, std::cmp::min(0, -((height-progress) as i32)) as f32),
-        (Left, Before) => (std::cmp::max(-(progress as i32), -(width as i32)) as f32, 0f32),
-        (Left, After) => (std::cmp::max(0, width-progress) as f32, 0f32),
+        (Down, After) => (0f32, std::cmp::min(0, -((height - progress) as i32)) as f32),
+        (Left, Before) => (
+            std::cmp::max(-(progress as i32), -(width as i32)) as f32,
+            0f32,
+        ),
+        (Left, After) => (std::cmp::max(0, width - progress) as f32, 0f32),
     }
 }
 
-fn draw(image: &[u8], x: f32, y: f32, width: u32, height: u32, position_attribute_location: u32, tex_coord_attribute_location: u32) {
+fn draw(
+    image: &[u8],
+    x: f32,
+    y: f32,
+    width: u32,
+    height: u32,
+    position_attribute_location: u32,
+    tex_coord_attribute_location: u32,
+) {
     unsafe {
         let vert_array = js_sys::Uint8Array::view(&image);
-        let _ = Pager::inner().context
+        let _ = Pager::inner()
+            .context
             .tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_array_buffer_view(
                 web_sys::WebGlRenderingContext::TEXTURE_2D,
                 0,
@@ -240,7 +333,9 @@ fn draw(image: &[u8], x: f32, y: f32, width: u32, height: u32, position_attribut
         tex_coord_attribute_location,
     );
 
-    Pager::inner().context.draw_arrays(web_sys::WebGlRenderingContext::TRIANGLE_STRIP, 0, 6);
+    Pager::inner()
+        .context
+        .draw_arrays(web_sys::WebGlRenderingContext::TRIANGLE_STRIP, 0, 6);
 }
 
 pub fn setup_buffer(
@@ -251,7 +346,10 @@ pub fn setup_buffer(
     indx: u32,
 ) {
     let position_buffer = context.create_buffer().unwrap();
-    context.bind_buffer(web_sys::WebGlRenderingContext::ARRAY_BUFFER, Some(&position_buffer));
+    context.bind_buffer(
+        web_sys::WebGlRenderingContext::ARRAY_BUFFER,
+        Some(&position_buffer),
+    );
 
     let (x1, y1) = start_point;
     let x2 = x1 + width;
@@ -285,7 +383,9 @@ fn document() -> web_sys::Document {
 }
 
 fn get_element_by(id: &str) -> web_sys::Element {
-    document().get_element_by_id(id).expect(format!("no exist element by id: {}", id).as_str())
+    document()
+        .get_element_by_id(id)
+        .unwrap_or_else(|| panic!("no exist element by id: {}", id))
 }
 
 fn request_animation_frame(f: &Closure<dyn FnMut()>) {
